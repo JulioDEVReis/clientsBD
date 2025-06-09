@@ -34,51 +34,86 @@ def add_new_client():
     
 def delete_client():
     try:
-        nome = input('Indique o nome e apelido a qual gostaria de eliminar a inscrição em nosso banco de dados: ')
-        query = 'DELETE FROM clientes WHERE nome = %s;'
+        id_cliente = input('Indique o ID do cliente a qual gostaria de eliminar a inscrição em nosso banco de dados: ')
         cur = conn.cursor()
-        cur.execute(query, (nome,))
-        conn.commit()
-        cur.close()
-        print(f'O nome {nome} foi excluído da nossa base de dados.')
+        cur.execute('SELECT nome FROM clientes WHERE id = %s', (id_cliente,))
+        nome = cur.fetchone()[0]  # retorna o primeiro elemento, o nome.
+        
+        if not nome:
+            print('ID não encontrado! Confirme se o ID é realmente esse e tente novamente...')
+            cur.close()
+            return
+        
+        confirmacao = input(f'vamos excluir da base de dados o cliente {nome}. Confirmas? (s/n): ')
+        
+        if confirmacao.lower() == 's':
+            cur.execute('DELETE FROM clientes WHERE id = %s;', (id_cliente,))
+            conn.commit()
+            cur.close()
+            print(f'O cliente {nome} foi excluído da nossa base de dados.')
+        elif confirmacao.lower == 'n':
+            print('Ok.. vamos voltar para a tela inicial...')
+            cur.close()
+            return
+        else:
+            print('Opss... Digite s para Sim ou n para Não. Vamos tentar de novo?')
+            cur.close()
+            return
     except Exception as e:
-        print('Não foi possível eliminar em nosso banco de dados o nome informado. Certifique-se que o nome e apelido foram digitados corretamente.')
+        print('Não foi possível eliminar esse cliente de nossa base de dados. Certifique-se que o ID digitado exista e tente novamente mais tarde...')
         print(f'Erro: {e}')
 
 def update_client():
     try:
-        nome = input('Indique o nome e apelido do usuário inscrito a qual gostaria de alterar o nome ou email em nosso banco de dados: ')
-        parametro = input('''Selecione uma das opções para alteração do registo:
-                          1. Nome e apelido.
-                          2. Email.
-                          3. Cancelar.
-                          
-                          ''')
+        id_cliente = input('Indique o ID do cliente inscrito a qual gostaria de alterar o nome ou email em nosso banco de dados: ')
         cur = conn.cursor()
-        if parametro == '1':
-            novo_nome = input('Indique o Nome e Apelido para a alteração do nome em nosso Banco de Dados: ')
-            query = 'UPDATE clientes SET nome = %s WHERE nome = %s;'
-            cur.execute(query, (novo_nome, nome))
-            conn.commit()
+        cur.execute('SELECT nome FROM clientes WHERE id = %s;', (id_cliente,))
+        nome = cur.fetchone()[0]
+        
+        if not nome:
+            print('ID não encontrado! Confirme se o ID é realmente esse e tente novamente...')
             cur.close()
-            print('O nome foi atualizado com sucesso!')
-        elif parametro == '2':
-            novo_email = input('Digite o novo email para o usuário escolhido: ')
-            query = 'UPDATE clientes SET email = %s WHERE nome = %s;'
-            cur.execute(query, (novo_email, nome))
-            conn.commit()
+            return
+        
+        confirmacao = input(f'vamos atualizar os dados do cliente {nome}. Tens certeza disso? (s/n): ')
+        
+        if confirmacao.lower() == 's':
+            parametro = input('''
+                            Selecione uma das opções para alteração do registo:
+                            1. Nome e apelido.
+                            2. Email.
+                            3. Cancelar.
+                            
+                            ''')
+            if parametro == '1':
+                novo_nome = input('Novo nome completo: ')
+                cur.execute('UPDATE clientes SET nome = %s WHERE id = %s;', (novo_nome, id_cliente))
+                conn.commit()
+                print('O nome foi atualizado com sucesso!')
+            elif parametro == '2':
+                novo_email = input('Novo email: ') 
+                cur.execute('UPDATE clientes SET email = %s WHERE id = %s;', (novo_email, id_cliente))
+                conn.commit()
+                print('Email atualizado com sucesso!')
+            elif parametro == '3':
+                print('A voltar para o menu inicial...')
+            else:
+                print('Escolha um número válido no Menu!!')
+                cur.close()
+                update_client()
             cur.close()
-            print('Email atualizado com sucesso!')
-        elif parametro == '3':
-            print('A voltar para o menu inicial...')
+        elif confirmacao.lower() == 'n':
+            print('Ok.. vamos voltar para a tela inicial...')
             cur.close()
+            return
         else:
-            print('Escolha um número válido no Menu!!')
+            print('Opss... Digite s para Sim ou n para Não. Vamos tentar de novo?')
             cur.close()
             update_client()
     except Exception as e:
         print('Não foi possível alterar os dados em nosso Banco de Dados. Tente novamente mais tarde!')
-        print(f'Erro: {e}')     
+        print(f'Erro: {e}')
+        conn.rollback()  # Para desfazer possiveis alterações parciais antes da quebra.     
 
 def make_search():
     try:
