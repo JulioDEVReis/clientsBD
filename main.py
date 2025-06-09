@@ -2,6 +2,7 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+import pandas as pd
  
 load_dotenv()
 
@@ -133,6 +134,40 @@ def make_search():
         print('Não foi possível fazer a pesquisa de clientes em nosso banco de dados. Tente novamente mais tarde!')
         print(f'Erro: {e}')
         
+def make_total_report():
+    try:
+        print('A gerar relatório total de compras (Arquivo CSV).')
+        cur = conn.cursor()
+        query = '''SELECT cl.id id_usuario, cl.nome nome_cliente, co.produto produto_comprado, co.preco
+        FROM compras co
+        JOIN clientes cl ON co.client_id = cl.id;'''
+        cur.execute(query)
+        relatorio = pd.read_sql(query, conn)
+        relatorio.to_csv('compras_clientes.csv', index=False)
+        cur.close()
+        print('Relatório gerado com sucesso!')
+    except Exception as e:
+        print('Não foi possível gerar o relatório total de compras por cliente! Tente novamente mais tarde.')
+        print(f'Erro: {e}')
+
+def make_client_report():
+    try:
+        print('A gerar relatório total de gastos por clientes (Arquivo CSV).')
+        cur = conn.cursor()
+        query = '''SELECT cl.id id_usuario, cl.nome nome_cliente, COALESCE(SUM(co.preco), 0.00) total_gasto
+        FROM clientes cl
+        LEFT JOIN compras co ON cl.id = co.client_id
+        GROUP BY cl.id
+        ORDER BY total_gasto DESC;'''
+        cur.execute(query)
+        relatorio = pd.read_sql(query, conn)
+        relatorio.to_csv('total_gastos_clientes.csv', index=False)
+        cur.close()
+        print('Relatório gerado com sucesso!')
+    except Exception as e:
+        print('Não foi possível gerar o relatório de gastos por cliente! Tente novamente mais tarde.')
+        print(f'Erro: {e}')
+
 def main_menu():
     menu = True
     while menu:
@@ -142,7 +177,9 @@ def main_menu():
                         2. Remover cliente.
                         3. Atualizar dados de cliente.
                         4. Ver clientes inscritos.
-                        5. Sair
+                        5. Gerar Relatório (CSV) total de compras.
+                        6. Gerar Relatório (CSV) somatório de compras por cliente.
+                        7. Sair
                         
                         ''')
         
@@ -155,7 +192,12 @@ def main_menu():
         elif option == '4':
             make_search()
         elif option == '5':
+            make_total_report()
+        elif option == '6':
+            make_client_report()
+        elif option == '7':
             print('A sair da aplicação...')
+            conn.close()
             menu = False
         else:
             print('Selecione um item do menu válido')
